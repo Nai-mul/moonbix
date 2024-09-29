@@ -27,12 +27,13 @@ if curr_version == version_:
 else:
     logger.warning(f"<yellow>New version detected {version_} please update the bot!</yellow>")
     sys.exit()
+
 start_text = f"""
 
 ███████╗██╗███████╗     ██████╗ ██████╗ ██████╗ ███████╗██████╗ 
 ██╔════╝██║╚══███╔╝    ██╔════╝██╔═══██╗██╔══██╗██╔════╝██╔══██╗
 ███████╗██║  ███╔╝     ██║     ██║   ██║██║  ██║█████╗  ██████╔╝
-╚════██║██║ ███╔╝      ██║     ██║   ██║██║  ██║██╔══╝  ██╔══██╗
+╚════██║██║ ███╔╝      ██║     ██║   ██║██╔══╝  ██╔══██╗
 ███████║██║███████╗    ╚██████╗╚██████╔╝██████╔╝███████╗██║  ██║
 ╚══════╝╚═╝╚══════╝     ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
 
@@ -43,7 +44,7 @@ Select an action:
 
     1. Run clicker
     2. Create session
-    3. Run clicker with multi-thread (Need proxy) | Just work with one account if you dont have proxy !
+    3. Run clicker with multi-thread (Need proxy) | Just work with one account if you don't have proxy!
     4. Run Cheat Tapper
 """
 
@@ -96,7 +97,7 @@ async def get_tg_clients() -> list[Client]:
     session_names = get_session_names()
 
     if not session_names:
-        raise FileNotFoundError("Not found session files")
+        raise FileNotFoundError("No session files found")
 
     if not settings.API_ID or not settings.API_HASH:
         raise ValueError("API_ID and API_HASH not found in the .env file.")
@@ -116,46 +117,28 @@ async def get_tg_clients() -> list[Client]:
 
 
 async def process() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--action", type=int, help="Action to perform")
-
     logger.info(f"Detected {len(get_session_names())} sessions | {len(get_proxies())} proxies")
 
-    action = parser.parse_args().action
+    session_names = get_session_names()
 
-    if not action:
-
+    if session_names:
+        print("Sessions found. Automatically starting the clicker...")
+        tg_clients = await get_tg_clients()
+        proxies = get_proxies()
+        await run_tapper_no_thread(tg_clients=tg_clients, proxies=proxies)
+    else:
+        # No sessions found, prompt the user to create a session
         print(start_text)
+        print("No sessions found. Please create a session first.")
 
         while True:
             action = input("> ")
 
-            if not action.isdigit():
-                logger.warning("Action must be number")
-            elif action not in ["1", "2", "3", "4"]:
-                logger.warning("Action must be 1, 2, 3 or 4")
-            else:
-                action = int(action)
+            if action == "2":
+                await register_sessions()
                 break
-
-    if action == 2:
-        await register_sessions()
-    elif action == 1:
-        tg_clients = await get_tg_clients()
-        proxies = get_proxies()
-        await run_tapper_no_thread(tg_clients=tg_clients, proxies=proxies)
-
-    elif action == 3:
-        tg_clients = await get_tg_clients()
-
-        await run_tasks(tg_clients=tg_clients)
-    elif action == 4:
-        tapper = import_tapper()
-        if tapper:
-            tg_clients = await get_tg_clients()
-            proxies = get_proxies()
-            await tapper.run_tapper_no_thread(tg_clients=tg_clients, proxies=proxies)
-
+            else:
+                print("Please create a session by selecting option 2.")
 
 
 async def run_tasks(tg_clients: list[Client]):
@@ -172,3 +155,7 @@ async def run_tasks(tg_clients: list[Client]):
     ]
 
     await asyncio.gather(*tasks)
+
+
+if __name__ == "__main__":
+    asyncio.run(process())
